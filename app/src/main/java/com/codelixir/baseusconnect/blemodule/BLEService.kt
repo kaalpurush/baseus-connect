@@ -360,12 +360,9 @@ class BLEService : Service() {
     // BluetoothGattCallback.onConnectionStateChange() will get the result
 
     fun disconnect() {
-
         if (mBluetoothAdapter == null || mBluetoothGatt == null) {                      //Check that we have a GATT connection to disconnect
-
             return
         }
-
         mBluetoothGatt?.disconnect()                                                    //Disconnect GATT connection
     }
     // Request a read of a given BluetoothGattCharacteristic. The Read result is reported asynchronously through the

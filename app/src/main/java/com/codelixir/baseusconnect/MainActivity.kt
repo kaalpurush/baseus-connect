@@ -37,8 +37,8 @@ import com.codelixir.baseusconnect.blemodule.BLEConstants
 import com.codelixir.baseusconnect.blemodule.BLEDeviceManager
 import com.codelixir.baseusconnect.blemodule.BLEService
 import com.codelixir.baseusconnect.blemodule.BleDeviceData
+import com.codelixir.baseusconnect.blemodule.OnDeviceScanListener
 import com.codelixir.baseusconnect.ui.theme.BaseusConnectTheme
-import com.np.lekotlin.blemodule.OnDeviceScanListener
 
 
 class MainActivity : ComponentActivity(), OnDeviceScanListener {

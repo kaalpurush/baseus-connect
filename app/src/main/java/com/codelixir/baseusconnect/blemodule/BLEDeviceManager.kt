@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.ParcelUuid
 import android.util.Log
-import com.np.lekotlin.blemodule.OnDeviceScanListener
 import java.util.ArrayList
 
 @SuppressLint("MissingPermission")
@@ -25,12 +24,7 @@ object BLEDeviceManager {
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mHandler: Handler? = null
     private var mOnDeviceScanListener: OnDeviceScanListener? = null
-    private var mLeScanCallback: BluetoothAdapter.LeScanCallback? = null
     private var mIsContinuesScan: Boolean = false
-
-    private fun isLollyPopOrAbove(): Boolean {
-        return true
-    }
 
     init {
         mHandler = Handler()
@@ -90,7 +84,6 @@ object BLEDeviceManager {
      * Check bluetooth is enabled or not.
      */
     fun isEnabled(): Boolean {
-
         return mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled
     }
 
@@ -135,13 +128,9 @@ object BLEDeviceManager {
 
 
     private fun scan() {
-        if (isLollyPopOrAbove()) {// Start Scanning For Lollipop devices
-            mBluetoothAdapter?.bluetoothLeScanner?.startScan(/*scanFilters(),
+        mBluetoothAdapter?.bluetoothLeScanner?.startScan(/*scanFilters(),
             scanSettings(),*/scanCallback
-            ) // Start BLE device Scanning in a separate thread
-        } else {
-            mBluetoothAdapter?.startLeScan(mLeScanCallback) // Start Scanning for Below Lollipop device
-        }
+        ) // Start BLE device Scanning in a separate thread
     }
 
     private fun scanFilters(): List<ScanFilter> {
@@ -167,14 +156,10 @@ object BLEDeviceManager {
             e.printStackTrace()
         } finally {
             if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled &&
-                if (isLollyPopOrAbove()) scanCallback != null else mLeScanCallback != null
+                scanCallback != null
             ) {
                 if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled) { // check if its Already available
-                    if (isLollyPopOrAbove()) {
-                        mBluetoothAdapter!!.bluetoothLeScanner.stopScan(scanCallback)
-                    } else {
-                        mBluetoothAdapter!!.stopLeScan(mLeScanCallback)
-                    }
+                    mBluetoothAdapter!!.bluetoothLeScanner.stopScan(scanCallback)
                 }
                 if (data != null) {
                     mOnDeviceScanListener?.onScanCompleted(data)
@@ -182,4 +167,15 @@ object BLEDeviceManager {
             }
         }
     }
+}
+
+interface OnDeviceScanListener {
+
+    /**
+     * Scan Completed -
+     *
+     * @param deviceDataList - Send available devices as a list to the init Activity
+     * The List Contain, device name and mac address,
+     */
+    fun onScanCompleted(deviceDataList: BleDeviceData)
 }
