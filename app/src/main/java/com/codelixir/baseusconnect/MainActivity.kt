@@ -7,30 +7,42 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.codelixir.baseusconnect.blemodule.BLEConnectionManager
 import com.codelixir.baseusconnect.blemodule.BLEConstants
 import com.codelixir.baseusconnect.blemodule.BLEDeviceManager
+import com.codelixir.baseusconnect.blemodule.BLEService
 import com.codelixir.baseusconnect.blemodule.BleDeviceData
 import com.codelixir.baseusconnect.ui.theme.BaseusConnectTheme
 import com.np.lekotlin.blemodule.OnDeviceScanListener
 
+
 class MainActivity : ComponentActivity(), OnDeviceScanListener {
-    private var mDeviceAddress: String = ""
+    private var mDeviceAddress: String = "D4:3D:39:6C:BC:85"
 
 
     override fun onScanCompleted(deviceDataList: BleDeviceData) {
@@ -40,7 +52,6 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
 
     private val REQUEST_LOCATION_PERMISSION = 2018
     private val TAG = "MainActivity"
-    private val REQUEST_ENABLE_BT = 1000
 
     /**
      * Check the Location Permission before calling the BLE API's
@@ -139,9 +150,17 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
             ) {
                 return
             }
-            startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT)
+
+            val launcher: ActivityResultLauncher<Intent> =
+                registerForActivityResult(
+                    ActivityResultContracts.StartActivityForResult()
+                ) {
+
+                }
+            launcher.launch(enableBtIntent)
         }
 
+        startForegroundService(Intent(this@MainActivity, BLEService::class.java))
         BLEConnectionManager.initBLEService(this@MainActivity)
     }
 
@@ -221,7 +240,8 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        BLEConnectionManager.disconnect()
+        //BLEConnectionManager.disconnect()
+        BLEConnectionManager.unBindBLEService(this@MainActivity)
         unRegisterServiceReceiver()
     }
 
@@ -279,6 +299,23 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
+                100
+            )
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                101
+            )
+        }
+
         setContent {
             BaseusConnectTheme {
                 // A surface container using the 'background' color from the theme
@@ -294,21 +331,32 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
         checkLocationPermission()
     }
 
+    @Composable
+    fun Greeting(name: String, modifier: Modifier = Modifier) {
+        Column(modifier = modifier) {
 
-}
+            Text(
+                text = "Hello $name!",
+            )
+            Button(
+                modifier = Modifier.size(width = 80.dp, height = 80.dp),
+                onClick = {
+                    connectDevice()
+                }) {
+                Text(text = "Connect")
+            }
+        }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    BaseusConnectTheme {
-        Greeting("Android")
     }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun GreetingPreview() {
+        BaseusConnectTheme {
+            Greeting("Android")
+        }
+    }
+
+
 }
+

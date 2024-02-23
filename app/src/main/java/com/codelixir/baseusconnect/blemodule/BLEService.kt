@@ -9,12 +9,14 @@ import android.app.Service
 import android.bluetooth.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_MIN
+import androidx.core.app.ServiceCompat
 import com.codelixir.baseusconnect.MainActivity
 import com.codelixir.baseusconnect.R
 import java.util.*
@@ -129,20 +131,24 @@ class BLEService : Service() {
 
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        startForeground()
+        return super.onStartCommand(intent, flags, startId)
+    }
+
     // An activity has bound to this service
     override fun onBind(intent: Intent): IBinder? {
-
         return mBinder                                                                 //Return LocalBinder when an Activity binds to this Service
     }
 
     // An activity has unbound from this service
     override fun onUnbind(intent: Intent): Boolean {
 
-        if (mBluetoothGatt != null) {                                                   //Check for existing BluetoothGatt connection
-            mBluetoothGatt!!.close()                                                     //Close BluetoothGatt coonection for proper cleanup
-            mBluetoothGatt =
-                null                                                      //No longer have a BluetoothGatt connection
-        }
+//        if (mBluetoothGatt != null) {                                                   //Check for existing BluetoothGatt connection
+//            mBluetoothGatt!!.close()                                                     //Close BluetoothGatt coonection for proper cleanup
+//            mBluetoothGatt =
+//                null                                                      //No longer have a BluetoothGatt connection
+//        }
 
         return super.onUnbind(intent)
     }
@@ -151,29 +157,35 @@ class BLEService : Service() {
         val channelId =
             createNotificationChannel()
 
-        val notificationBuilder = NotificationCompat.Builder(this, channelId )
-        val notificationIntent: Intent = Intent(this, MainActivity::class.java)
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(this,0,notificationIntent,0)
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            this, 0, notificationIntent,
+            PendingIntent.FLAG_IMMUTABLE
+        )
         val notification = notificationBuilder.setOngoing(true)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Service is running in background")
-            .setContentText("Tap to open")
+            .setContentTitle("Baseus Connect")
+            .setContentText("Keep runnning for constant connection")
             .setPriority(PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setContentIntent(pendingIntent)
             .build()
 
-        startForeground(1, notification)
+        startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
 
         //connect
         //connectDevice(myRepository.deviceToConnect)
 
     }
-    private fun createNotificationChannel(): String{
+
+    private fun createNotificationChannel(): String {
         val channelId = "my_service"
         val channelName = "My Background Service"
-        val chan = NotificationChannel(channelId,
-            channelName, NotificationManager.IMPORTANCE_HIGH)
+        val chan = NotificationChannel(
+            channelId,
+            channelName, NotificationManager.IMPORTANCE_HIGH
+        )
         chan.lightColor = Color.BLUE
         chan.importance = NotificationManager.IMPORTANCE_NONE
         chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
@@ -210,7 +222,7 @@ class BLEService : Service() {
 
             mBluetoothGatt = device.connectGatt(
                 this,
-                false,
+                true,
                 mGattCallback
             )                //Directly connect to the device so autoConnect is false
             mBluetoothDeviceAddress =

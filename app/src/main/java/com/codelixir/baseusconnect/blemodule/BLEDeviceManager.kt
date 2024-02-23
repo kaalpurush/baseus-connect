@@ -29,16 +29,12 @@ object BLEDeviceManager {
     private var mIsContinuesScan: Boolean = false
 
     private fun isLollyPopOrAbove(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+        return true
     }
 
     init {
         mHandler = Handler()
-        if (isLollyPopOrAbove()) {
-            createScanCallBackAboveLollipop()
-        } else {
-            createScanCallBackBelowLollipop()
-        }
+        createScanCallBack()
     }
 
     /**
@@ -46,13 +42,14 @@ object BLEDeviceManager {
      * The Callback will trigger the Nearest available BLE devices
      * Search the BLE device in Range and pull the Name and Mac Address from it
      */
-    private fun createScanCallBackAboveLollipop() {
+    private fun createScanCallBack() {
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
                 super.onScanResult(callbackType, result)
 
                 if (null != mOnDeviceScanListener && result != null &&
-                        result.device != null && result.device.address != null) {
+                    result.device != null && result.device.address != null
+                ) {
                     val data = BleDeviceData()
                     data.mDeviceName = if (result.device.name != null)
                         result.device.name else "Unknown"
@@ -67,50 +64,11 @@ object BLEDeviceManager {
                      * communication channel will create if its valid device.
                      */
 
-                    if (data.mDeviceName.contains("Invisa") || data.mDeviceName.
-                                    contains("invisa")) {
+                    if (data.mDeviceName.contains("Invisa") || data.mDeviceName.contains("invisa")) {
                         mDeviceObject = data
                         stopScan(mDeviceObject)
                     }
                 }
-            }
-        }
-    }
-
-    /**
-     * ScanCallback for below Lollipop.
-     * The Callback will trigger the Nearest available BLE devices
-     * Search the BLE device in Range and pull the Name and Mac Address from it
-     */
-    private fun createScanCallBackBelowLollipop() {
-        mLeScanCallback = BluetoothAdapter.LeScanCallback { device, _, _ ->
-            if (device != null && device.address != null && null != mOnDeviceScanListener) {
-                // Some case the Device Name will return as Null from BLE because of Swathing from one device to another
-                val data = BleDeviceData()
-                data.mDeviceName  = (device.name)
-                data.mDeviceAddress = (device.address)
-
-                /**
-                 * Save the Valid Device info into a list
-                 * The List will display to the UI as a popup
-                 * User has an option to select one BLE from the popup
-                 * After selecting one BLE, the connection will establish and
-                 * communication channel will create if its valid device.
-                 */
-
-                /**
-                 * Save the Valid Device info into a list
-                 * The List will display to the UI as a popup
-                 * User has an option to select one BLE from the popup
-                 * After selecting one BLE, the connection will establish and communication
-                 * channel will create if its valid device.
-                 */
-
-                if (data.mDeviceName.contains("Invisa") || data.mDeviceName.contains("invisa")) {
-                    mDeviceObject = data
-                    stopScan(mDeviceObject)
-                }
-
             }
         }
     }
@@ -121,11 +79,11 @@ object BLEDeviceManager {
      * Then enable the hardware,
      */
     fun init(context: Context): Boolean {
-        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val bluetoothManager =
+            context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         mBluetoothAdapter = bluetoothManager.adapter
 
-        return mBluetoothAdapter != null && context.packageManager.
-                hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
+        return mBluetoothAdapter != null && context.packageManager.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
     }
 
     /**
@@ -163,18 +121,17 @@ object BLEDeviceManager {
              * Set a 10 Sec delay time and Stop Scanning
              * collect all the available devices in the 10 Second
              */
-           /* if (!isContinuesScan) {
-                mHandler?.postDelayed({
-                    // Set a delay time to Scanning
-                    stopScan(mDeviceObject)
-                }, BLEConstants.SCAN_PERIOD) // Delay Period
-            }*/
+            /* if (!isContinuesScan) {
+                 mHandler?.postDelayed({
+                     // Set a delay time to Scanning
+                     stopScan(mDeviceObject)
+                 }, BLEConstants.SCAN_PERIOD) // Delay Period
+             }*/
         } catch (e: Exception) {
             Log.e(TAG, e.message.toString())
         }
 
     }
-
 
 
     private fun scan() {
@@ -192,7 +149,8 @@ object BLEDeviceManager {
         val emergencyUDID = ""// Your UUID
         val catchUDID = ""// Your UUID
         val catchAllUDID = ""// Your UUID
-        val filter = ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(emergencyUDID)).build()
+        val filter =
+            ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(emergencyUDID)).build()
         val list = ArrayList<ScanFilter>(1)
         list.add(filter)
         return list
@@ -209,7 +167,8 @@ object BLEDeviceManager {
             e.printStackTrace()
         } finally {
             if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled &&
-                    if (isLollyPopOrAbove()) scanCallback != null else mLeScanCallback != null) {
+                if (isLollyPopOrAbove()) scanCallback != null else mLeScanCallback != null
+            ) {
                 if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled) { // check if its Already available
                     if (isLollyPopOrAbove()) {
                         mBluetoothAdapter!!.bluetoothLeScanner.stopScan(scanCallback)
