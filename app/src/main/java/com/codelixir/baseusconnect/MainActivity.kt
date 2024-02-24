@@ -51,6 +51,33 @@ import kotlinx.coroutines.launch
 
 class MainActivity : BaseActivity(), OnDeviceScanListener {
     private var mDeviceAddress = mutableStateOf("")
+    private lateinit var launcher: ActivityResultLauncher<Intent>
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            BaseusConnectTheme {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Greeting(mDeviceAddress)
+                }
+            }
+        }
+
+        registerActivityResult()
+        requestPermissionsAndProceed()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        //BLEConnectionManager.disconnect()
+        BLEConnectionManager.unBindBLEService(this@MainActivity)
+        unRegisterServiceReceiver()
+    }
 
     override fun onScanCompleted(deviceDataList: BleDeviceData) {
         mDeviceAddress.value = deviceDataList.mDeviceAddress
@@ -90,6 +117,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             })
     }
 
+
     /**
      *After receive the Location Permission, the Application need to initialize the
      * BLE Module and BLE Service
@@ -113,12 +141,6 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                 return
             }
 
-            val launcher: ActivityResultLauncher<Intent> =
-                registerForActivityResult(
-                    ActivityResultContracts.StartActivityForResult()
-                ) {
-
-                }
             launcher.launch(enableBtIntent)
         }
 
@@ -126,6 +148,14 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         BLEConnectionManager.initBLEService(this@MainActivity)
     }
 
+
+    private fun registerActivityResult() {
+        launcher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) {
+
+        }
+    }
 
     /**
      * Register GATT update receiver
@@ -136,7 +166,6 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             RECEIVER_NOT_EXPORTED
         )
     }
-
 
     private val mGattUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -190,6 +219,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         return intentFilter
     }
 
+
     /**
      * Unregister GATT update receiver
      */
@@ -202,14 +232,6 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         }
 
     }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        //BLEConnectionManager.disconnect()
-        BLEConnectionManager.unBindBLEService(this@MainActivity)
-        unRegisterServiceReceiver()
-    }
-
 
     /*    private fun writeEmergency() {
             BLEConnectionManager.writeEmergencyGatt("0xfe");
@@ -259,24 +281,6 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
 
     private fun disconnectDevice() {
         BLEConnectionManager.disconnect()
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        setContent {
-            BaseusConnectTheme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Greeting(mDeviceAddress)
-                }
-            }
-        }
-
-        requestPermissionsAndProceed()
     }
 
     @Composable

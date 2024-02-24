@@ -166,7 +166,7 @@ class BLEService : Service() {
         val notification = notificationBuilder
             .setOngoing(true)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Baseus Connect")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText("Keep runnning for constant connection")
             .setPriority(PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
