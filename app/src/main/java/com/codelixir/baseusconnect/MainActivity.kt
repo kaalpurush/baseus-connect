@@ -9,29 +9,23 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.codelixir.baseusconnect.blemodule.BLEConnectionManager
 import com.codelixir.baseusconnect.blemodule.BLEConstants
 import com.codelixir.baseusconnect.blemodule.BLEDeviceManager
@@ -39,6 +33,12 @@ import com.codelixir.baseusconnect.blemodule.BLEService
 import com.codelixir.baseusconnect.blemodule.BleDeviceData
 import com.codelixir.baseusconnect.blemodule.OnDeviceScanListener
 import com.codelixir.baseusconnect.ui.theme.BaseusConnectTheme
+import com.codelixir.baseusconnect.util.toast
+import com.hjq.permissions.OnPermissionCallback
+import com.hjq.permissions.Permission
+import com.hjq.permissions.XXPermissions
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity(), OnDeviceScanListener {
@@ -50,82 +50,38 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
         BLEConnectionManager.connect(deviceDataList.mDeviceAddress)
     }
 
-    private val REQUEST_LOCATION_PERMISSION = 2018
     private val TAG = "MainActivity"
 
-    /**
-     * Check the Location Permission before calling the BLE API's
-     */
-    private fun checkLocationPermission() {
-        when {
-            isLocationPermissionEnabled() -> initBLEModule()
-            ActivityCompat.shouldShowRequestPermissionRationale(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) -> displayRationale()
+    private fun requestPermissionsAndProceed() {
+        XXPermissions.with(this)
+            .permission(
+                Permission.POST_NOTIFICATIONS,
+                Permission.ACCESS_COARSE_LOCATION,
+                Permission.BLUETOOTH_CONNECT,
+            )
+            .request(object : OnPermissionCallback {
 
-            else -> requestLocationPermission()
-        }
-    }
+                override fun onGranted(permissions: MutableList<String>, allGranted: Boolean) {
+                    if (!allGranted) {
+                        toast("Some permissions were obtained, but some permissions were not granted normally")
+                        return
+                    }
+                    toast("Acquired all permissions successfully")
 
-    /**
-     * Request Location API
-     * If the request go to Android system and the System will throw a dialog message
-     * user can accept or decline the permission from there
-     */
-    private fun requestLocationPermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
-            REQUEST_LOCATION_PERMISSION
-        )
-    }
-
-    /**
-     * If the user decline the Permission request and tick the never ask again message
-     * Then the application can't proceed further steps
-     * In such situation- App need to prompt the user to do the change form Settings Manually
-     */
-    private fun displayRationale() {
-
-    }
-
-    /**
-     * If the user either accept or reject the Permission- The requested App will get a callback
-     * Form the call back we can filter the user response with the help of request key
-     * If the user accept the same- We can proceed further steps
-     */
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        when (requestCode) {
-            REQUEST_LOCATION_PERMISSION -> {
-                if (permissions.size != 1 || grantResults.size != 1) {
-                    throw RuntimeException("Error on requesting location permission.")
-                }
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    toast("initBLEModule")
                     initBLEModule()
-                } else {
-                    Toast.makeText(
-                        this, "R.string.location_permission_not_granted",
-                        Toast.LENGTH_SHORT
-                    ).show()
                 }
-            }
-        }
-    }
 
-    /**
-     * Check with the system- If the permission already enabled or not
-     */
-    private fun isLocationPermissionEnabled(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+                override fun onDenied(permissions: MutableList<String>, doNotAskAgain: Boolean) {
+                    if (doNotAskAgain) {
+                        toast("Authorization denied permanently, please grant all permissions manually")
+                        // If it is permanently denied, jump to the application permission system settings page
+                        XXPermissions.startPermissionActivity(this@MainActivity, permissions)
+                    } else {
+                        toast("Failed to get permissions")
+                    }
+                }
+            })
     }
 
     /**
@@ -135,7 +91,7 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
     private fun initBLEModule() {
         // BLE initialization
         if (!BLEDeviceManager.init(this)) {
-            Toast.makeText(this, "BLE NOT SUPPORTED", Toast.LENGTH_SHORT).show()
+            toast("BLE NOT SUPPORTED")
             return
         }
         registerServiceReceiver()
@@ -286,15 +242,15 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
      * Connect the application with BLE device with selected device address.
      */
     private fun connectDevice() {
-        Handler().postDelayed({
+        lifecycleScope.launch {
+            delay(100)
             BLEConnectionManager.initBLEService(this@MainActivity)
             if (BLEConnectionManager.connect(mDeviceAddress)) {
-                Toast.makeText(this@MainActivity, "DEVICE CONNECTED", Toast.LENGTH_SHORT).show()
+                toast("DEVICE CONNECTED")
             } else {
-                Toast.makeText(this@MainActivity, "DEVICE CONNECTION FAILED", Toast.LENGTH_SHORT)
-                    .show()
+                toast("DEVICE CONNECTION FAILED")
             }
-        }, 100)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -328,7 +284,7 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
             }
         }
 
-        checkLocationPermission()
+        requestPermissionsAndProceed()
     }
 
     @Composable
@@ -336,10 +292,11 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
         Column(modifier = modifier) {
 
             Text(
+                modifier = Modifier.fillMaxWidth(),
                 text = "Hello $name!",
             )
             Button(
-                modifier = Modifier.size(width = 80.dp, height = 80.dp),
+                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     connectDevice()
                 }) {
