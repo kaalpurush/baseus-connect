@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,16 +42,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-class MainActivity : ComponentActivity(), OnDeviceScanListener {
+class MainActivity : BaseActivity(), OnDeviceScanListener {
     private var mDeviceAddress: String = "D4:3D:39:6C:BC:85"
-
 
     override fun onScanCompleted(deviceDataList: BleDeviceData) {
         mDeviceAddress = deviceDataList.mDeviceAddress
         BLEConnectionManager.connect(deviceDataList.mDeviceAddress)
     }
-
-    private val TAG = "MainActivity"
 
     private fun requestPermissionsAndProceed() {
         XXPermissions.with(this)
@@ -124,8 +122,11 @@ class MainActivity : ComponentActivity(), OnDeviceScanListener {
     /**
      * Register GATT update receiver
      */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun registerServiceReceiver() {
-        this.registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter())
+        this.registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter(),
+            RECEIVER_NOT_EXPORTED
+        )
     }
 
 

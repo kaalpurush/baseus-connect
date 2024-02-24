@@ -10,8 +10,9 @@ import android.os.IBinder
 import android.util.Log
 
 object BLEConnectionManager {
-
-    private val TAG = "BLEConnectionManager"
+    val TAG: String by lazy {
+        this::class.java.simpleName
+    }
     private var mBLEService: BLEService? = null
     private var isBind = false
     private var mDataBLEForEmergency: BluetoothGattCharacteristic? = null

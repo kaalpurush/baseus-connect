@@ -163,7 +163,8 @@ class BLEService : Service() {
             this, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = notificationBuilder.setOngoing(true)
+        val notification = notificationBuilder
+            .setOngoing(true)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Baseus Connect")
             .setContentText("Keep runnning for constant connection")
@@ -180,17 +181,17 @@ class BLEService : Service() {
     }
 
     private fun createNotificationChannel(): String {
-        val channelId = "my_service"
-        val channelName = "My Background Service"
-        val chan = NotificationChannel(
+        val channelId = "background_service"
+        val channelName = "Background Service"
+        val channel = NotificationChannel(
             channelId,
             channelName, NotificationManager.IMPORTANCE_HIGH
         )
-        chan.lightColor = Color.BLUE
-        chan.importance = NotificationManager.IMPORTANCE_NONE
-        chan.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+        channel.lightColor = Color.BLUE
+        channel.importance = NotificationManager.IMPORTANCE_NONE
+        channel.lockscreenVisibility = Notification.VISIBILITY_PRIVATE
         val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        service.createNotificationChannel(chan)
+        service.createNotificationChannel(channel)
         return channelId
     }
 
