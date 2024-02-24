@@ -19,7 +19,7 @@ import java.util.ArrayList
 object BLEDeviceManager {
 
     private val TAG = "BLEDeviceManager"
-    private var scanCallback: ScanCallback? = null
+    private val scanCallback by lazy { createScanCallBack() }
     private var mDeviceObject: BleDeviceData? = null
     private var mBluetoothAdapter: BluetoothAdapter? = null
     private var mHandler: Handler? = null
@@ -36,8 +36,8 @@ object BLEDeviceManager {
      * The Callback will trigger the Nearest available BLE devices
      * Search the BLE device in Range and pull the Name and Mac Address from it
      */
-    private fun createScanCallBack() {
-        scanCallback = object : ScanCallback() {
+    private fun createScanCallBack(): ScanCallback {
+        return object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult?) {
                 super.onScanResult(callbackType, result)
 
@@ -58,7 +58,7 @@ object BLEDeviceManager {
                      * communication channel will create if its valid device.
                      */
 
-                    if (data.mDeviceName.contains("Invisa") || data.mDeviceName.contains("invisa")) {
+                    if (data.mDeviceName.contains("Baseus", true)) {
                         mDeviceObject = data
                         stopScan(mDeviceObject)
                     }
@@ -128,8 +128,10 @@ object BLEDeviceManager {
 
 
     private fun scan() {
-        mBluetoothAdapter?.bluetoothLeScanner?.startScan(/*scanFilters(),
-            scanSettings(),*/scanCallback
+        mBluetoothAdapter?.bluetoothLeScanner?.startScan(
+            null,
+            scanSettings(),
+            scanCallback
         ) // Start BLE device Scanning in a separate thread
     }
 
@@ -146,24 +148,17 @@ object BLEDeviceManager {
     }
 
     private fun scanSettings(): ScanSettings {
-        return ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build()
+        return ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build()
     }
 
     private fun stopScan(data: BleDeviceData?) {
-        try {
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled &&
-                scanCallback != null
-            ) {
-                if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled) { // check if its Already available
-                    mBluetoothAdapter!!.bluetoothLeScanner.stopScan(scanCallback)
-                }
-                if (data != null) {
-                    mOnDeviceScanListener?.onScanCompleted(data)
-                }
+        if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled
+        ) {
+            if (mBluetoothAdapter != null && mBluetoothAdapter!!.isEnabled) { // check if its Already available
+                mBluetoothAdapter!!.bluetoothLeScanner.stopScan(scanCallback)
+            }
+            if (data != null) {
+                mOnDeviceScanListener?.onScanCompleted(data)
             }
         }
     }

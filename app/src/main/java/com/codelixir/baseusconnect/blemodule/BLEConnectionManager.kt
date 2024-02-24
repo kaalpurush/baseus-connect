@@ -25,6 +25,7 @@ object BLEConnectionManager {
                 Log.e(TAG, "Unable to initialize")
             }
         }
+
         override fun onServiceDisconnected(componentName: ComponentName) {
             mBLEService = null
         }
@@ -35,15 +36,13 @@ object BLEConnectionManager {
      */
     fun initBLEService(context: Context) {
         try {
-
             if (mBLEService == null) {
-                val gattServiceIntent = Intent(context, BLEService::class.java)
-
-                isBind = context.bindService(gattServiceIntent, mServiceConnection,
-                        Context.BIND_AUTO_CREATE)
-
+                val serviceIntent = Intent(context, BLEService::class.java)
+                isBind = context.bindService(
+                    serviceIntent, mServiceConnection,
+                    Context.BIND_AUTO_CREATE
+                )
             }
-
         } catch (e: Exception) {
             Log.e(TAG, e.message.toString())
         }
@@ -54,11 +53,9 @@ object BLEConnectionManager {
      * Unbind BLE Service
      */
     fun unBindBLEService(context: Context) {
-
         if (isBind) {
             context.unbindService(mServiceConnection)
         }
-
         mBLEService = null
     }
 
@@ -66,14 +63,10 @@ object BLEConnectionManager {
      * Connect to a BLE Device
      */
     fun connect(deviceAddress: String): Boolean {
-        var result = false
-
         if (mBLEService != null) {
-            result = mBLEService!!.connect(deviceAddress)
+            return mBLEService!!.connect(deviceAddress)
         }
-
-        return result
-
+        return false
     }
 
     /**
@@ -82,7 +75,7 @@ object BLEConnectionManager {
     fun disconnect() {
         if (null != mBLEService) {
             mBLEService!!.disconnect()
-            mBLEService = null
+            //mBLEService = null
         }
 
     }
@@ -95,14 +88,15 @@ object BLEConnectionManager {
     }
 
     fun writeBatteryLevel(batteryLevel: String) {
-        if(batteryLevel != null){
+        if (batteryLevel != null) {
 //            writeBLECharacteristic(mDataMDLPForMissedConnection);
         }
     }
 
     fun writeMissedConnection(value: String) {
-        var gattCharacteristic =  BluetoothGattCharacteristic(java.util.UUID.
-                fromString(value), PROPERTY_WRITE, PERMISSION_WRITE)
+        var gattCharacteristic = BluetoothGattCharacteristic(
+            java.util.UUID.fromString(value), PROPERTY_WRITE, PERMISSION_WRITE
+        )
         if (gattCharacteristic != null) {
             gattCharacteristic.setValue(value)
             writeBLECharacteristic(gattCharacteristic)
@@ -110,8 +104,9 @@ object BLEConnectionManager {
     }
 
     fun writeEmergencyGatt(value: String) {
-        var mDataMDLPForEmergency =  BluetoothGattCharacteristic(java.util.UUID.
-                fromString(value), PROPERTY_READ, PERMISSION_READ)
+        var mDataMDLPForEmergency = BluetoothGattCharacteristic(
+            java.util.UUID.fromString(value), PROPERTY_READ, PERMISSION_READ
+        )
         if (mDataMDLPForEmergency != null) {
             mDataMDLPForEmergency.setValue(value)
             writeBLECharacteristic(mDataMDLPForEmergency)
@@ -130,24 +125,27 @@ object BLEConnectionManager {
     }
 
     fun readMissedConnection(UUID: String) {
-        var gattCharacteristic =  BluetoothGattCharacteristic(java.util.UUID.
-                fromString(UUID), PROPERTY_READ, PERMISSION_READ)
+        var gattCharacteristic = BluetoothGattCharacteristic(
+            java.util.UUID.fromString(UUID), PROPERTY_READ, PERMISSION_READ
+        )
         if (gattCharacteristic != null) {
             readMLDPCharacteristic(gattCharacteristic)
         }
     }
 
     fun readBatteryLevel(UUID: String) {
-        var gattCharacteristic =  BluetoothGattCharacteristic(java.util.UUID.
-                fromString(UUID), PROPERTY_READ, PERMISSION_READ)
+        var gattCharacteristic = BluetoothGattCharacteristic(
+            java.util.UUID.fromString(UUID), PROPERTY_READ, PERMISSION_READ
+        )
         if (gattCharacteristic != null) {
             readMLDPCharacteristic(gattCharacteristic)
         }
     }
 
     fun readEmergencyGatt(UUID: String) {
-        var gattCharacteristic =  BluetoothGattCharacteristic(java.util.UUID.
-                fromString(UUID), PROPERTY_READ, PERMISSION_READ)
+        var gattCharacteristic = BluetoothGattCharacteristic(
+            java.util.UUID.fromString(UUID), PROPERTY_READ, PERMISSION_READ
+        )
         if (gattCharacteristic != null) {
             readMLDPCharacteristic(gattCharacteristic)
         }
@@ -185,15 +183,22 @@ object BLEConnectionManager {
         if (serviceList != null) {
             for (gattService in serviceList) {
 
-                if (gattService.getUuid().toString().equals("mContext.getString(R.string.char_uuid_emergency)",
-                                ignoreCase = true)) {
+                if (gattService.getUuid().toString().equals(
+                        "mContext.getString(R.string.char_uuid_emergency)",
+                        ignoreCase = true
+                    )
+                ) {
                     val gattCharacteristics = gattService.characteristics
                     for (gattCharacteristic in gattCharacteristics) {
 
-                        uuid = if (gattCharacteristic.uuid != null) gattCharacteristic.uuid.toString() else ""
+                        uuid =
+                            if (gattCharacteristic.uuid != null) gattCharacteristic.uuid.toString() else ""
 
-                        if (uuid.equals("mContext.resources.getString(R.string.char_uuid_emergency_call)",
-                                        ignoreCase = true)) {
+                        if (uuid.equals(
+                                "mContext.resources.getString(R.string.char_uuid_emergency_call)",
+                                ignoreCase = true
+                            )
+                        ) {
                             var newChar = gattCharacteristic
                             newChar = setProperties(newChar)
                             mDataBLEForEmergency = newChar

@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,7 +23,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
@@ -43,11 +50,11 @@ import kotlinx.coroutines.launch
 
 
 class MainActivity : BaseActivity(), OnDeviceScanListener {
-    private var mDeviceAddress: String = "D4:3D:39:6C:BC:85"
+    private var mDeviceAddress = mutableStateOf("")
 
     override fun onScanCompleted(deviceDataList: BleDeviceData) {
-        mDeviceAddress = deviceDataList.mDeviceAddress
-        BLEConnectionManager.connect(deviceDataList.mDeviceAddress)
+        mDeviceAddress.value = deviceDataList.mDeviceAddress
+        //BLEConnectionManager.connect(deviceDataList.mDeviceAddress)
     }
 
     private fun requestPermissionsAndProceed() {
@@ -55,6 +62,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             .permission(
                 Permission.POST_NOTIFICATIONS,
                 Permission.ACCESS_COARSE_LOCATION,
+                Permission.BLUETOOTH_SCAN,
                 Permission.BLUETOOTH_CONNECT,
             )
             .request(object : OnPermissionCallback {
@@ -122,9 +130,9 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
     /**
      * Register GATT update receiver
      */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun registerServiceReceiver() {
-        this.registerReceiver(mGattUpdateReceiver, makeGattUpdateIntentFilter(),
+        this.registerReceiver(
+            mGattUpdateReceiver, makeGattUpdateIntentFilter(),
             RECEIVER_NOT_EXPORTED
         )
     }
@@ -228,15 +236,10 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         }*/
 
     /**
-     * Scan the BLE device if the device address is null
-     * else the app will try to connect with device with existing device address.
+     * Scan the BLE device
      */
     private fun scanDevice(isContinuesScan: Boolean) {
-        if (mDeviceAddress.isNotEmpty()) {
-            connectDevice()
-        } else {
-            BLEDeviceManager.scanBLEDevice(isContinuesScan)
-        }
+        BLEDeviceManager.scanBLEDevice(isContinuesScan)
     }
 
     /**
@@ -246,7 +249,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         lifecycleScope.launch {
             delay(100)
             BLEConnectionManager.initBLEService(this@MainActivity)
-            if (BLEConnectionManager.connect(mDeviceAddress)) {
+            if (BLEConnectionManager.connect(mDeviceAddress.value)) {
                 toast("DEVICE CONNECTED")
             } else {
                 toast("DEVICE CONNECTION FAILED")
@@ -254,24 +257,12 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         }
     }
 
+    private fun disconnectDevice() {
+        BLEConnectionManager.disconnect()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.BLUETOOTH_CONNECT),
-                100
-            )
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                101
-            )
-        }
 
         setContent {
             BaseusConnectTheme {
@@ -280,7 +271,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    Greeting(mDeviceAddress)
                 }
             }
         }
@@ -289,12 +280,22 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
     }
 
     @Composable
-    fun Greeting(name: String, modifier: Modifier = Modifier) {
+    fun Greeting(mDeviceAddress: MutableState<String>, modifier: Modifier = Modifier) {
         Column(modifier = modifier) {
-
-            Text(
+            Button(
                 modifier = Modifier.fillMaxWidth(),
-                text = "Hello $name!",
+                onClick = {
+                    scanDevice(false)
+                }) {
+                Text(text = "Scan")
+            }
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = mDeviceAddress.value,
+                onValueChange = {
+                    mDeviceAddress.value = it
+                },
+                label = { Text("Device Mac:") }
             )
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -302,6 +303,13 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     connectDevice()
                 }) {
                 Text(text = "Connect")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    disconnectDevice()
+                }) {
+                Text(text = "Disconnect")
             }
         }
 
@@ -311,7 +319,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
     @Composable
     fun GreetingPreview() {
         BaseusConnectTheme {
-            Greeting("Android")
+            Greeting(mDeviceAddress)
         }
     }
 
