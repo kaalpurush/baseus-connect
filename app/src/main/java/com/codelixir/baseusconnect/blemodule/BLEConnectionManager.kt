@@ -8,8 +8,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
-import com.codelixir.baseusconnect.R
-import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_CHARACTERISTIC_UUID
+import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_CALL_CHARACTERISTIC_UUID
+import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_NOTIFICATION_CHARACTERISTIC_UUID
 import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_UUID
 
 object BLEConnectionManager {
@@ -19,6 +19,7 @@ object BLEConnectionManager {
     private var mBLEService: BLEService? = null
     private var isBind = false
     private var mDataBLEForEmergency: BluetoothGattCharacteristic? = null
+    private var mBLECallCharacteristic: BluetoothGattCharacteristic? = null
 
     private val mServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(componentName: ComponentName, service: IBinder) {
@@ -27,6 +28,8 @@ object BLEConnectionManager {
             if (!mBLEService?.initialize()!!) {
                 Log.e(TAG, "Unable to initialize")
             }
+
+            mBLEService?.stopAlarm()
         }
 
         override fun onServiceDisconnected(componentName: ComponentName) {
@@ -79,7 +82,13 @@ object BLEConnectionManager {
             mBLEService!!.disconnect()
             //mBLEService = null
         }
+    }
 
+    fun writeCallDevice() {
+        if (mBLECallCharacteristic != null) {
+            mBLECallCharacteristic!!.value = byteArrayOf(0xBA.toByte(), 0x03.toByte(), 0x01.toByte())
+            writeBLECharacteristic(mBLECallCharacteristic)
+        }
     }
 
     fun writeEmergencyGatt(value: ByteArray) {
@@ -199,12 +208,16 @@ object BLEConnectionManager {
                         Log.d("gattCharacteristic", uuid)
 
                         if (uuid.equals(
-                                LE_SERVICE_CHARACTERISTIC_UUID, ignoreCase = true
+                                LE_SERVICE_NOTIFICATION_CHARACTERISTIC_UUID, ignoreCase = true
                             )
                         ) {
                             var newChar = gattCharacteristic
                             newChar = setProperties(newChar)
                             mDataBLEForEmergency = newChar
+                        }
+
+                        if (uuid.equals(LE_SERVICE_CALL_CHARACTERISTIC_UUID, ignoreCase = true)) {
+                            mBLECallCharacteristic = gattCharacteristic
                         }
                     }
                 }
@@ -236,6 +249,10 @@ object BLEConnectionManager {
             gattCharacteristic.writeType = BluetoothGattCharacteristic.PROPERTY_READ
         }
         return gattCharacteristic
+    }
+
+    fun stopAlarm() {
+        mBLEService?.stopAlarm()
     }
 
 }

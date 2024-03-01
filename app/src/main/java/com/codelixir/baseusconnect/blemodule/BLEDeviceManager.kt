@@ -92,6 +92,11 @@ object BLEDeviceManager {
      */
     fun setListener(onDeviceScanListener: OnDeviceScanListener) {
         mOnDeviceScanListener = onDeviceScanListener
+
+        mDeviceObject?.let {
+            onDeviceScanListener.onScanCompleted(it)
+        }
+
     }
 
     /**

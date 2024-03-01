@@ -30,6 +30,7 @@
         android:theme="@style/Theme.BaseusConnect"
         tools:targetApi="31">
         <activity
+            android:launchMode="singleInstance"
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.BaseusConnect">

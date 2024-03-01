@@ -11,14 +11,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Color
+import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Binder
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_MIN
 import com.codelixir.baseusconnect.MainActivity
 import com.codelixir.baseusconnect.R
+import com.codelixir.baseusconnect.util.toast
 import java.util.*
 import kotlin.experimental.and
 
@@ -37,6 +41,7 @@ class BLEService : Service() {
     private var mBluetoothDeviceAddress: String? = null//Address of the connected BLE device
     private val mCompleResponseByte = ByteArray(100)
 
+    private lateinit var ringtone: Ringtone
 
     private val mGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(
@@ -128,8 +133,26 @@ class BLEService : Service() {
 
             if (characteristic != null) {
                 val uuid: String = characteristic.uuid.toString()
-                if (uuid.equals(BLEConstants.LE_SERVICE_CHARACTERISTIC_UUID, ignoreCase = true)) {
-                    playAlarm()
+
+                if (uuid.equals(
+                        BLEConstants.LE_SERVICE_NOTIFICATION_CHARACTERISTIC_UUID, ignoreCase = true
+                    )
+                ) {
+                    when (characteristic.value.contentToString()) {
+                        "[-86, 8]" -> playAlarm()
+                        "[-86, 3, 1]" -> {
+                            Handler(Looper.getMainLooper()).post {
+                                toast("Command successful!")
+                            }
+                        }
+
+                        else -> {
+                            Handler(Looper.getMainLooper()).post {
+                                toast("Unknown notification!")
+                            }
+                        }
+                    }
+
                 }
 
             }
@@ -138,12 +161,22 @@ class BLEService : Service() {
 
     fun playAlarm() {
         try {
+            if (::ringtone.isInitialized) {
+                ringtone.stop()
+            }
+
             val notification =
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            val r = RingtoneManager.getRingtone(applicationContext, notification)
-            r.play()
+            ringtone = RingtoneManager.getRingtone(applicationContext, notification)
+            ringtone.play()
         } catch (e: java.lang.Exception) {
             e.printStackTrace()
+        }
+    }
+
+    fun stopAlarm() {
+        if (::ringtone.isInitialized) {
+            ringtone.stop()
         }
     }
 

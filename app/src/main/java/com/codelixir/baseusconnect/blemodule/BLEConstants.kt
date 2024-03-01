@@ -34,6 +34,7 @@ class BLEConstants {
         const val SCAN_PERIOD: Long = 10000
 
         const val LE_SERVICE_UUID = "edfec62e-9910-0bac-5241-d8bda6932a2f"
-        const val LE_SERVICE_CHARACTERISTIC_UUID = "15005991-b131-3396-014c-664c9867b917"
+        const val LE_SERVICE_NOTIFICATION_CHARACTERISTIC_UUID = "15005991-b131-3396-014c-664c9867b917"
+        const val LE_SERVICE_CALL_CHARACTERISTIC_UUID = "2d86686a-53dc-25b3-0c4a-f0e10c8aec21"
     }
 }

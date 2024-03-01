@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.RingtoneManager
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.compose.setContent
@@ -110,7 +111,6 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                 }
             })
     }
-
 
     /**
      *After receive the Location Permission, the Application need to initialize the
@@ -279,6 +279,10 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         BLEConnectionManager.disconnect()
     }
 
+    private fun callDevice(){
+        BLEConnectionManager.writeCallDevice()
+    }
+
     @Composable
     fun HomeScreen(mBleDeviceData: MutableState<BleDeviceData>, modifier: Modifier = Modifier) {
         Column(modifier = modifier) {
@@ -310,6 +314,13 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     disconnectDevice()
                 }) {
                 Text(text = "Disconnect")
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    callDevice()
+                }) {
+                Text(text = "Call")
             }
         }
 
