@@ -11,16 +11,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Color
+import android.media.RingtoneManager
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.PRIORITY_MIN
-import androidx.core.app.ServiceCompat
 import com.codelixir.baseusconnect.MainActivity
 import com.codelixir.baseusconnect.R
 import java.util.*
 import kotlin.experimental.and
+
 
 @SuppressLint("MissingPermission")
 class BLEService : Service() {
@@ -43,7 +44,6 @@ class BLEService : Service() {
             status: Int,
             newState: Int
         ) {//Change in connection state
-
             if (newState == BluetoothProfile.STATE_CONNECTED) {//See if we are connected
                 Log.i(TAG, "**ACTION_SERVICE_CONNECTED**$status")
                 broadcastUpdate(BLEConstants.ACTION_GATT_CONNECTED)//Go broadcast an intent to say we are connected
@@ -119,16 +119,32 @@ class BLEService : Service() {
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic?
         ) {
-
             if (characteristic != null && characteristic.properties == BluetoothGattCharacteristic.PROPERTY_NOTIFY) {
                 Log.e(TAG, "**THIS IS A NOTIFY MESSAGE")
             }
             if (characteristic != null) {
                 broadcastUpdate(BLEConstants.ACTION_DATA_AVAILABLE, characteristic)
             }                     //Go broadcast an intent with the characteristic data
+
+            if (characteristic != null) {
+                val uuid: String = characteristic.uuid.toString()
+                if (uuid.equals(BLEConstants.LE_SERVICE_CHARACTERISTIC_UUID, ignoreCase = true)) {
+                    playAlarm()
+                }
+
+            }
         }
+    }
 
-
+    fun playAlarm() {
+        try {
+            val notification =
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            val r = RingtoneManager.getRingtone(applicationContext, notification)
+            r.play()
+        } catch (e: java.lang.Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -265,7 +281,7 @@ class BLEService : Service() {
                 "MESSAGE Response Array Normal===> " + dataValueNew + " UUID " + characteristic.uuid
             )
             intent.putExtra(BLEConstants.EXTRA_DATA, dataValueNew)
-            intent.putExtra(BLEConstants.EXTRA_UUID, characteristic.uuid)
+            intent.putExtra(BLEConstants.EXTRA_UUID, characteristic.uuid.toString())
             sendBroadcast(intent)
         }
     }

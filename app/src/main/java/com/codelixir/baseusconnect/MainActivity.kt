@@ -7,15 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
-import android.text.Editable
 import android.util.Log
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,13 +22,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.codelixir.baseusconnect.blemodule.BLEConnectionManager
 import com.codelixir.baseusconnect.blemodule.BLEConstants
@@ -50,7 +44,7 @@ import kotlinx.coroutines.launch
 
 
 class MainActivity : BaseActivity(), OnDeviceScanListener {
-    private var mDeviceAddress = mutableStateOf("")
+    private var mBleDeviceData: MutableState<BleDeviceData> = mutableStateOf(BleDeviceData())
     private lateinit var launcher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +57,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting(mDeviceAddress)
+                    HomeScreen(mBleDeviceData)
                 }
             }
         }
@@ -79,9 +73,9 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         unRegisterServiceReceiver()
     }
 
-    override fun onScanCompleted(deviceDataList: BleDeviceData) {
-        mDeviceAddress.value = deviceDataList.mDeviceAddress
-        //BLEConnectionManager.connect(deviceDataList.mDeviceAddress)
+    override fun onScanCompleted(deviceData: BleDeviceData) {
+        mBleDeviceData.value = deviceData
+        //BLEConnectionManager.connect(deviceDataList.mBleDeviceData)
     }
 
     private fun requestPermissionsAndProceed() {
@@ -144,8 +138,8 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             launcher.launch(enableBtIntent)
         }
 
-        startForegroundService(Intent(this@MainActivity, BLEService::class.java))
-        BLEConnectionManager.initBLEService(this@MainActivity)
+        startForegroundService(Intent(this, BLEService::class.java))
+        BLEConnectionManager.initBLEService(this)
     }
 
 
@@ -161,15 +155,19 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
      * Register GATT update receiver
      */
     private fun registerServiceReceiver() {
-        this.registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             mGattUpdateReceiver, makeGattUpdateIntentFilter(),
-            RECEIVER_NOT_EXPORTED
+            ContextCompat.RECEIVER_EXPORTED
         )
     }
 
     private val mGattUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val action = intent.action
+
+            toast(action)
+
             when {
                 BLEConstants.ACTION_GATT_CONNECTED.equals(action) -> {
                     Log.i(TAG, "ACTION_GATT_CONNECTED ")
@@ -194,7 +192,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     val data = intent.getStringExtra(BLEConstants.EXTRA_DATA)
                     val uuId = intent.getStringExtra(BLEConstants.EXTRA_UUID)
                     Log.i(TAG, "ACTION_DATA_AVAILABLE $data")
-
+                    toast("Notification: $data")
                 }
 
                 BLEConstants.ACTION_DATA_WRITTEN.equals(action) -> {
@@ -271,9 +269,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         lifecycleScope.launch {
             delay(100)
             BLEConnectionManager.initBLEService(this@MainActivity)
-            if (BLEConnectionManager.connect(mDeviceAddress.value)) {
-                toast("DEVICE CONNECTED")
-            } else {
+            if (!BLEConnectionManager.connect(mBleDeviceData.value.mDeviceAddress)) {
                 toast("DEVICE CONNECTION FAILED")
             }
         }
@@ -284,7 +280,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
     }
 
     @Composable
-    fun Greeting(mDeviceAddress: MutableState<String>, modifier: Modifier = Modifier) {
+    fun HomeScreen(mBleDeviceData: MutableState<BleDeviceData>, modifier: Modifier = Modifier) {
         Column(modifier = modifier) {
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -295,11 +291,11 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             }
             TextField(
                 modifier = Modifier.fillMaxWidth(),
-                value = mDeviceAddress.value,
+                value = mBleDeviceData.value.mDeviceAddress,
                 onValueChange = {
-                    mDeviceAddress.value = it
+                    mBleDeviceData.value = BleDeviceData(mDeviceAddress = it)
                 },
-                label = { Text("Device Mac:") }
+                label = { Text("Device: " + mBleDeviceData.value.mDeviceName) }
             )
             Button(
                 modifier = Modifier.fillMaxWidth(),
@@ -321,9 +317,9 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
 
     @Preview(showBackground = true)
     @Composable
-    fun GreetingPreview() {
+    fun Preview() {
         BaseusConnectTheme {
-            Greeting(mDeviceAddress)
+            HomeScreen(mBleDeviceData)
         }
     }
 

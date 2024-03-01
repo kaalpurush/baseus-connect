@@ -8,6 +8,9 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
+import com.codelixir.baseusconnect.R
+import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_CHARACTERISTIC_UUID
+import com.codelixir.baseusconnect.blemodule.BLEConstants.Companion.LE_SERVICE_UUID
 
 object BLEConnectionManager {
     val TAG: String by lazy {
@@ -39,8 +42,7 @@ object BLEConnectionManager {
             if (mBLEService == null) {
                 val serviceIntent = Intent(context, BLEService::class.java)
                 isBind = context.bindService(
-                    serviceIntent, mServiceConnection,
-                    Context.BIND_AUTO_CREATE
+                    serviceIntent, mServiceConnection, Context.BIND_AUTO_CREATE
                 )
             }
         } catch (e: Exception) {
@@ -183,20 +185,21 @@ object BLEConnectionManager {
         if (serviceList != null) {
             for (gattService in serviceList) {
 
+                Log.d("gattService", gattService.uuid.toString())
+
                 if (gattService.getUuid().toString().equals(
-                        "mContext.getString(R.string.char_uuid_emergency)",
-                        ignoreCase = true
+                        LE_SERVICE_UUID, ignoreCase = true
                     )
                 ) {
                     val gattCharacteristics = gattService.characteristics
                     for (gattCharacteristic in gattCharacteristics) {
-
                         uuid =
                             if (gattCharacteristic.uuid != null) gattCharacteristic.uuid.toString() else ""
 
+                        Log.d("gattCharacteristic", uuid)
+
                         if (uuid.equals(
-                                "mContext.resources.getString(R.string.char_uuid_emergency_call)",
-                                ignoreCase = true
+                                LE_SERVICE_CHARACTERISTIC_UUID, ignoreCase = true
                             )
                         ) {
                             var newChar = gattCharacteristic
@@ -211,8 +214,7 @@ object BLEConnectionManager {
 
     }
 
-    private fun setProperties(gattCharacteristic: BluetoothGattCharacteristic):
-            BluetoothGattCharacteristic {
+    private fun setProperties(gattCharacteristic: BluetoothGattCharacteristic): BluetoothGattCharacteristic {
         val characteristicProperties = gattCharacteristic.properties
 
         if (characteristicProperties and BluetoothGattCharacteristic.PROPERTY_NOTIFY > 0) {
