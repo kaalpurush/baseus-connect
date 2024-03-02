@@ -41,6 +41,8 @@ class BLEService : Service() {
     private var mBluetoothDeviceAddress: String? = null//Address of the connected BLE device
     private val mCompleResponseByte = ByteArray(100)
 
+    private var mGattConnectionState = -1
+
     private lateinit var ringtone: Ringtone
 
     private val mGattCallback = object : BluetoothGattCallback() {
@@ -49,6 +51,11 @@ class BLEService : Service() {
             status: Int,
             newState: Int
         ) {//Change in connection state
+
+            mGattConnectionState = newState
+
+            broadcastUpdate(BLEConstants.ACTION_GATT_CONNECTION_STATE_CHANGE, newState)
+
             if (newState == BluetoothProfile.STATE_CONNECTED) {//See if we are connected
                 Log.i(TAG, "**ACTION_SERVICE_CONNECTED**$status")
                 broadcastUpdate(BLEConstants.ACTION_GATT_CONNECTED)//Go broadcast an intent to say we are connected
@@ -159,6 +166,10 @@ class BLEService : Service() {
         }
     }
 
+    fun getState(): Int {
+        return mGattConnectionState
+    }
+
     fun playAlarm() {
         try {
             if (::ringtone.isInitialized) {
@@ -212,6 +223,14 @@ class BLEService : Service() {
             this, 0, notificationIntent,
             PendingIntent.FLAG_IMMUTABLE
         )
+
+        val stopActionIntent = Intent(this, MainActivity::class.java)
+        stopActionIntent.action = "stop"
+        val stopActionPendingIntent = PendingIntent.getActivity(
+            this, 0,
+            stopActionIntent, PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notification = notificationBuilder
             .setOngoing(true)
             .setSmallIcon(R.mipmap.ic_launcher)
@@ -220,6 +239,11 @@ class BLEService : Service() {
             .setPriority(PRIORITY_MIN)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setContentIntent(pendingIntent)
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Stop",
+                stopActionPendingIntent
+            )
             .build()
 
         startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
@@ -291,6 +315,12 @@ class BLEService : Service() {
         val intent =
             Intent(action)                                       //Create new intent to broadcast the action
         sendBroadcast(intent)                                                          //Broadcast the intent
+    }
+
+    private fun broadcastUpdate(action: String, state: Int) {
+        val intent =
+            Intent(action).apply { putExtra(BLEConstants.EXTRA_STATE, state) }
+        sendBroadcast(intent)
     }
 
     // Broadcast an intent with a string representing an action an extra string with the data

@@ -2,6 +2,7 @@ package com.codelixir.baseusconnect
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,19 +14,34 @@ import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -34,6 +50,7 @@ import com.codelixir.baseusconnect.blemodule.BLEConstants
 import com.codelixir.baseusconnect.blemodule.BLEDeviceManager
 import com.codelixir.baseusconnect.blemodule.BLEService
 import com.codelixir.baseusconnect.blemodule.BleDeviceData
+import com.codelixir.baseusconnect.blemodule.OnConnectionStateListener
 import com.codelixir.baseusconnect.blemodule.OnDeviceScanListener
 import com.codelixir.baseusconnect.ui.theme.BaseusConnectTheme
 import com.codelixir.baseusconnect.util.toast
@@ -44,12 +61,27 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 
-class MainActivity : BaseActivity(), OnDeviceScanListener {
+class MainActivity : BaseActivity(), OnDeviceScanListener, OnConnectionStateListener {
     private var mBleDeviceData: MutableState<BleDeviceData> = mutableStateOf(BleDeviceData())
     private lateinit var launcher: ActivityResultLauncher<Intent>
 
+    private var mGattConnectionState = mutableIntStateOf(-1)
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == "stop") {
+            shutDown()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        handleIntent(intent)
 
         setContent {
             BaseusConnectTheme {
@@ -58,7 +90,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    HomeScreen(mBleDeviceData)
+                    HomeScreen(mBleDeviceData, mGattConnectionState)
                 }
             }
         }
@@ -125,6 +157,8 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         registerServiceReceiver()
         BLEDeviceManager.setListener(this)
 
+        BLEConnectionManager.setListener(this)
+
         if (!BLEDeviceManager.isEnabled()) {
             val enableBtIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
             if (ActivityCompat.checkSelfPermission(
@@ -138,10 +172,23 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
             launcher.launch(enableBtIntent)
         }
 
+        startService()
+    }
+
+    private fun startService() {
         startForegroundService(Intent(this, BLEService::class.java))
         BLEConnectionManager.initBLEService(this)
     }
 
+    private fun stopService() {
+        stopService(Intent(this, BLEService::class.java))
+    }
+
+    private fun shutDown() {
+        disconnectDevice()
+        stopService()
+        finish()
+    }
 
     private fun registerActivityResult() {
         launcher = registerForActivityResult(
@@ -168,17 +215,21 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
 
             toast(action)
 
-            when {
-                BLEConstants.ACTION_GATT_CONNECTED.equals(action) -> {
+            when (action) {
+                BLEConstants.ACTION_GATT_CONNECTION_STATE_CHANGE -> {
+                    mGattConnectionState.intValue = intent.getIntExtra(BLEConstants.EXTRA_STATE, -1)
+                }
+
+                BLEConstants.ACTION_GATT_CONNECTED -> {
                     Log.i(TAG, "ACTION_GATT_CONNECTED ")
                     BLEConnectionManager.findBLEGattService(this@MainActivity)
                 }
 
-                BLEConstants.ACTION_GATT_DISCONNECTED.equals(action) -> {
+                BLEConstants.ACTION_GATT_DISCONNECTED -> {
                     Log.i(TAG, "ACTION_GATT_DISCONNECTED ")
                 }
 
-                BLEConstants.ACTION_GATT_SERVICES_DISCOVERED.equals(action) -> {
+                BLEConstants.ACTION_GATT_SERVICES_DISCOVERED -> {
                     Log.i(TAG, "ACTION_GATT_SERVICES_DISCOVERED ")
                     try {
                         Thread.sleep(500)
@@ -188,14 +239,14 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
                     BLEConnectionManager.findBLEGattService(this@MainActivity)
                 }
 
-                BLEConstants.ACTION_DATA_AVAILABLE.equals(action) -> {
+                BLEConstants.ACTION_DATA_AVAILABLE -> {
                     val data = intent.getStringExtra(BLEConstants.EXTRA_DATA)
                     val uuId = intent.getStringExtra(BLEConstants.EXTRA_UUID)
                     Log.i(TAG, "ACTION_DATA_AVAILABLE $data")
                     toast("Notification: $data")
                 }
 
-                BLEConstants.ACTION_DATA_WRITTEN.equals(action) -> {
+                BLEConstants.ACTION_DATA_WRITTEN -> {
                     val data = intent.getStringExtra(BLEConstants.EXTRA_DATA)
                     Log.i(TAG, "ACTION_DATA_WRITTEN ")
                 }
@@ -208,6 +259,7 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
      */
     private fun makeGattUpdateIntentFilter(): IntentFilter {
         val intentFilter = IntentFilter()
+        intentFilter.addAction(BLEConstants.ACTION_GATT_CONNECTION_STATE_CHANGE)
         intentFilter.addAction(BLEConstants.ACTION_GATT_CONNECTED)
         intentFilter.addAction(BLEConstants.ACTION_GATT_DISCONNECTED)
         intentFilter.addAction(BLEConstants.ACTION_GATT_SERVICES_DISCOVERED)
@@ -279,48 +331,96 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
         BLEConnectionManager.disconnect()
     }
 
-    private fun callDevice(){
-        BLEConnectionManager.writeCallDevice()
+    private fun callDevice(status: Int) {
+        BLEConnectionManager.writeCallDevice(status)
     }
 
     @Composable
-    fun HomeScreen(mBleDeviceData: MutableState<BleDeviceData>, modifier: Modifier = Modifier) {
-        Column(modifier = modifier) {
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    scanDevice(false)
-                }) {
-                Text(text = "Scan")
+    fun HomeScreen(
+        mBleDeviceData: MutableState<BleDeviceData>,
+        mGattConnectionState: MutableState<Int>,
+        modifier: Modifier = Modifier
+    ) {
+        Column(modifier = modifier.padding(all = 8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextField(
+                    modifier = Modifier
+                        .weight(1f),
+                    value = mBleDeviceData.value.mDeviceAddress,
+                    onValueChange = {
+                        mBleDeviceData.value = BleDeviceData(mDeviceAddress = it)
+                    },
+                    label = { Text("Device: " + mBleDeviceData.value.mDeviceName) }
+                )
+                Button(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 2.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue),
+                    onClick = {
+                        scanDevice(false)
+                    }) {
+                    Text(text = "Scan")
+                }
             }
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = mBleDeviceData.value.mDeviceAddress,
-                onValueChange = {
-                    mBleDeviceData.value = BleDeviceData(mDeviceAddress = it)
-                },
-                label = { Text("Device: " + mBleDeviceData.value.mDeviceName) }
-            )
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    connectDevice()
-                }) {
-                Text(text = "Connect")
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .width(32.dp)
+                        .clip(shape = RoundedCornerShape(32.dp))
+                        .background(
+                            color = when (mGattConnectionState.value) {
+                                BluetoothProfile.STATE_CONNECTED -> Color.Green
+                                BluetoothProfile.STATE_DISCONNECTED -> Color.Red
+                                BluetoothProfile.STATE_CONNECTING -> Color.Yellow
+                                BluetoothProfile.STATE_DISCONNECTING -> Color.Yellow
+                                else -> Color.White
+                            }
+                        )
+                ) {
+
+                }
+                Button(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 2.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
+                    onClick = {
+                        connectDevice()
+                    }) {
+                    Text(text = "Connect")
+                }
+                Button(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 2.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    onClick = {
+                        disconnectDevice()
+                    }) {
+                    Text(text = "Disconnect")
+                }
             }
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    disconnectDevice()
-                }) {
-                Text(text = "Disconnect")
-            }
-            Button(
-                modifier = Modifier.fillMaxWidth(),
-                onClick = {
-                    callDevice()
-                }) {
-                Text(text = "Call")
+            Row (verticalAlignment = Alignment.CenterVertically){
+                Button(
+                    modifier = Modifier
+                        .weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green),
+                    onClick = {
+                        callDevice(1)
+                    }) {
+                    Text(text = "Call")
+                }
+                Button(
+                    modifier = Modifier
+                        .weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+                    onClick = {
+                        callDevice(0)
+                    }) {
+                    Text(text = "Stop Call")
+                }
             }
         }
 
@@ -330,10 +430,13 @@ class MainActivity : BaseActivity(), OnDeviceScanListener {
     @Composable
     fun Preview() {
         BaseusConnectTheme {
-            HomeScreen(mBleDeviceData)
+            HomeScreen(mBleDeviceData, mGattConnectionState)
         }
     }
 
+    override fun onStateChanged(state: Int) {
+        mGattConnectionState.value = BLEConnectionManager.getState()
+    }
 
 }
 

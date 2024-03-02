@@ -3,16 +3,19 @@ package com.codelixir.baseusconnect.blemodule
 class BLEConstants {
 
     companion object {
+        const val ACTION_GATT_CONNECTION_STATE_CHANGE =
+            "com.codelixir.baseusconnect.ACTION_GATT_CONNECTION_STATE_CHANGE"
         const val ACTION_GATT_CONNECTED =
-            "com.codelixir.baseusconnec.ACTION_GATT_CONNECTED" //Strings representing actions to broadcast to activities
+            "com.codelixir.baseusconnect.ACTION_GATT_CONNECTED" //Strings representing actions to broadcast to activities
         const val ACTION_GATT_DISCONNECTED =
-            "com.codelixir.baseusconnec.ACTION_GATT_DISCONNECTED" // Old com.zco.ble
+            "com.codelixir.baseusconnect.ACTION_GATT_DISCONNECTED" // Old com.zco.ble
         const val ACTION_GATT_SERVICES_DISCOVERED =
-            "ccom.codelixir.baseusconnec.ACTION_GATT_SERVICES_DISCOVERED"
-        const val ACTION_DATA_AVAILABLE = "com.codelixir.baseusconnec.ACTION_DATA_AVAILABLE"
-        const val ACTION_DATA_WRITTEN = "ccom.codelixir.baseusconnec.ACTION_DATA_WRITTEN"
-        const val EXTRA_DATA = "com.codelixir.baseusconnec.EXTRA_DATA"
-        const val EXTRA_UUID = "com.codelixir.baseusconnec.EXTRA_UUID"
+            "ccom.codelixir.baseusconnect.ACTION_GATT_SERVICES_DISCOVERED"
+        const val ACTION_DATA_AVAILABLE = "com.codelixir.baseusconnect.ACTION_DATA_AVAILABLE"
+        const val ACTION_DATA_WRITTEN = "ccom.codelixir.baseusconnect.ACTION_DATA_WRITTEN"
+        const val EXTRA_DATA = "com.codelixir.baseusconnect.EXTRA_DATA"
+        const val EXTRA_UUID = "com.codelixir.baseusconnect.EXTRA_UUID"
+        const val EXTRA_STATE = "com.codelixir.baseusconnect.EXTRA_STATE"
 
 
         const val LE_DATA_PRIVATE_CHAR =

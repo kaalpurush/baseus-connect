@@ -16,6 +16,8 @@ object BLEConnectionManager {
     val TAG: String by lazy {
         this::class.java.simpleName
     }
+
+    private var mOnConnectionStateListener: OnConnectionStateListener? = null
     private var mBLEService: BLEService? = null
     private var isBind = false
     private var mDataBLEForEmergency: BluetoothGattCharacteristic? = null
@@ -29,10 +31,13 @@ object BLEConnectionManager {
                 Log.e(TAG, "Unable to initialize")
             }
 
+            mOnConnectionStateListener?.onStateChanged(1)
+
             mBLEService?.stopAlarm()
         }
 
         override fun onServiceDisconnected(componentName: ComponentName) {
+            mOnConnectionStateListener?.onStateChanged(0)
             mBLEService = null
         }
     }
@@ -64,14 +69,15 @@ object BLEConnectionManager {
         mBLEService = null
     }
 
+    fun getState(): Int {
+        return mBLEService?.getState() ?: -1
+    }
+
     /**
      * Connect to a BLE Device
      */
     fun connect(deviceAddress: String): Boolean {
-        if (mBLEService != null) {
-            return mBLEService!!.connect(deviceAddress)
-        }
-        return false
+        return mBLEService?.connect(deviceAddress) ?: false
     }
 
     /**
@@ -84,9 +90,11 @@ object BLEConnectionManager {
         }
     }
 
-    fun writeCallDevice() {
+    fun writeCallDevice(status: Int) {
+        val command = if (status == 1) byteArrayOf(0xBA.toByte(), 0x03.toByte(), 0x01.toByte()) else
+            byteArrayOf(0xBA.toByte(), 0x03.toByte(), 0x00.toByte())
         if (mBLECallCharacteristic != null) {
-            mBLECallCharacteristic!!.value = byteArrayOf(0xBA.toByte(), 0x03.toByte(), 0x01.toByte())
+            mBLECallCharacteristic!!.value = command
             writeBLECharacteristic(mBLECallCharacteristic)
         }
     }
@@ -255,4 +263,12 @@ object BLEConnectionManager {
         mBLEService?.stopAlarm()
     }
 
+    fun setListener(onConnectionStateListener: OnConnectionStateListener) {
+        mOnConnectionStateListener = onConnectionStateListener
+    }
+
+}
+
+interface OnConnectionStateListener {
+    fun onStateChanged(state: Int)
 }
